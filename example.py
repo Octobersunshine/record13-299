@@ -107,5 +107,71 @@ def main():
     print("=" * 60)
 
 
+def demo_null_groups():
+    print("\n" + "=" * 60)
+    print("含空值分组聚合示例")
+    print("=" * 60)
+
+    data = {
+        '部门': ['技术部', '销售部', None, '技术部', '市场部', None, '销售部', '技术部'],
+        '城市': ['北京', '上海', '深圳', None, '北京', '上海', '上海', '北京'],
+        '薪资': [15000, 18000, 12000, 14000, 16000, 13000, 20000, 17000],
+        '绩效': [4.5, 4.8, 4.0, 4.2, 4.6, 3.9, 4.9, 4.3]
+    }
+    df_null = pd.DataFrame(data)
+    print("\n含空值的数据:")
+    print(df_null.to_string(index=False))
+
+    agg = GroupAggregator(df_null)
+
+    print("\n" + "-" * 40)
+    print("1. dropna=False (默认): 空值作为独立分组")
+    print("-" * 40)
+    result_keep = agg.aggregate(
+        group_cols='部门',
+        agg_cols='薪资',
+        agg_funcs=['count', 'sum', 'mean']
+    )
+    print(result_keep)
+
+    print("\n" + "-" * 40)
+    print("2. dropna=True: 丢弃含空值的分组行")
+    print("-" * 40)
+    result_drop = agg.aggregate(
+        group_cols='部门',
+        agg_cols='薪资',
+        agg_funcs=['count', 'sum', 'mean'],
+        dropna=True
+    )
+    print(result_drop)
+
+    print("\n" + "-" * 40)
+    print("3. 多列分组含空值 (dropna=False)")
+    print("-" * 40)
+    result_multi_null = agg.aggregate(
+        group_cols=['部门', '城市'],
+        agg_cols='薪资',
+        agg_funcs=['count', 'mean']
+    )
+    print(result_multi_null)
+
+    print("\n" + "-" * 40)
+    print("4. multi_aggregate 含空值 (dropna=False)")
+    print("-" * 40)
+    result_multi_agg = agg.multi_aggregate(
+        group_cols='部门',
+        agg_config={
+            '薪资': ['count', 'sum', 'mean'],
+            '绩效': ['mean', 'max']
+        }
+    )
+    print(result_multi_agg.to_string())
+
+    print("\n" + "=" * 60)
+    print("含空值分组示例完成！")
+    print("=" * 60)
+
+
 if __name__ == '__main__':
     main()
+    demo_null_groups()

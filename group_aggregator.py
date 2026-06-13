@@ -56,7 +56,7 @@ class GroupAggregator:
         agg_funcs: Union[str, List[str]],
         sort: bool = True,
         as_index: bool = True,
-        dropna: bool = True
+        dropna: bool = False
     ) -> pd.DataFrame:
         if isinstance(group_cols, str):
             group_cols = [group_cols]
@@ -128,6 +128,7 @@ class GroupAggregator:
         self,
         group_cols: Union[str, List[str]],
         agg_config: Dict[str, Union[str, List[str]]],
+        dropna: bool = False,
         **kwargs
     ) -> pd.DataFrame:
         if isinstance(group_cols, str):
@@ -147,7 +148,7 @@ class GroupAggregator:
 
         self._group_cols = group_cols
 
-        grouped = self._df.groupby(by=group_cols, **kwargs)
+        grouped = self._df.groupby(by=group_cols, dropna=dropna, **kwargs)
         result = grouped.agg(validated_config)
 
         result.columns = [f"{col}_{func}" for col, func in result.columns]
