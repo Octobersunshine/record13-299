@@ -172,6 +172,120 @@ def demo_null_groups():
     print("=" * 60)
 
 
+def demo_multi_column_group():
+    print("\n" + "=" * 60)
+    print("多列分组聚合示例")
+    print("=" * 60)
+
+    data = {
+        '部门': ['技术部', '销售部', '技术部', '市场部', '销售部', '技术部',
+                 '市场部', '销售部', '技术部', '市场部', '技术部', '销售部'],
+        '城市': ['北京', '上海', '北京', '深圳', '上海', '深圳',
+                 '北京', '广州', '深圳', '北京', '广州', '广州'],
+        '级别': ['高级', '高级', '中级', '中级', '高级', '中级',
+                 '高级', '中级', '高级', '中级', '中级', '高级'],
+        '薪资': [25000, 22000, 15000, 16000, 28000, 17000,
+                 20000, 18000, 24000, 15500, 16000, 26000],
+        '绩效': [4.8, 4.6, 4.2, 4.5, 4.9, 4.3,
+                 4.7, 4.1, 4.8, 4.0, 4.4, 4.7]
+    }
+    df = pd.DataFrame(data)
+    print("\n原始数据:")
+    print(df.to_string(index=False))
+
+    agg = GroupAggregator(df)
+
+    print("\n" + "-" * 40)
+    print("1. 按部门+城市 两列分组 (aggregate)")
+    print("-" * 40)
+    result = agg.aggregate(
+        group_cols=['部门', '城市'],
+        agg_cols='薪资',
+        agg_funcs=['count', 'sum', 'mean']
+    )
+    print(result)
+
+    print("\n" + "-" * 40)
+    print("2. 按部门+城市+级别 三列分组 (aggregate)")
+    print("-" * 40)
+    result_3col = agg.aggregate(
+        group_cols=['部门', '城市', '级别'],
+        agg_cols='薪资',
+        agg_funcs=['count', 'mean']
+    )
+    print(result_3col.to_string())
+
+    print("\n" + "-" * 40)
+    print("3. 组合键分组 (composite_group): 部门+城市 -> 部门_城市")
+    print("-" * 40)
+    result_composite = agg.composite_group(
+        group_cols=['部门', '城市'],
+        agg_cols='薪资',
+        agg_funcs=['count', 'sum', 'mean'],
+        sep='_'
+    )
+    print(result_composite)
+
+    print("\n" + "-" * 40)
+    print("4. 组合键分组 - 自定义分隔符: 部门-城市")
+    print("-" * 40)
+    result_custom_sep = agg.composite_group(
+        group_cols=['部门', '城市'],
+        agg_cols='薪资',
+        agg_funcs=['count', 'mean'],
+        sep='-'
+    )
+    print(result_custom_sep)
+
+    print("\n" + "-" * 40)
+    print("5. 交叉透视表 (pivot_aggregate): 行=部门, 列=城市, 值=薪资sum")
+    print("-" * 40)
+    result_pivot = agg.pivot_aggregate(
+        row_col='部门',
+        col_col='城市',
+        agg_col='薪资',
+        agg_func='sum',
+        fill_value=0
+    )
+    print(result_pivot)
+
+    print("\n" + "-" * 40)
+    print("6. 交叉透视表: 行=部门, 列=级别, 值=薪资mean")
+    print("-" * 40)
+    result_pivot2 = agg.pivot_aggregate(
+        row_col='部门',
+        col_col='级别',
+        agg_col='薪资',
+        agg_func='mean',
+        fill_value=0
+    )
+    print(result_pivot2)
+
+    print("\n" + "-" * 40)
+    print("7. 多列分组 + multi_aggregate")
+    print("-" * 40)
+    result_multi = agg.multi_aggregate(
+        group_cols=['部门', '级别'],
+        agg_config={
+            '薪资': ['count', 'sum', 'mean'],
+            '绩效': ['mean', 'max']
+        }
+    )
+    print(result_multi.to_string())
+
+    print("\n" + "-" * 40)
+    print("8. 查看 group_info 分组详情")
+    print("-" * 40)
+    info = agg.group_info
+    for k, v in info.items():
+        print(f"  {k}: {v}")
+
+    print("\n" + "=" * 60)
+    print("多列分组聚合示例完成！")
+    print("=" * 60)
+
+
 if __name__ == '__main__':
     main()
     demo_null_groups()
+    demo_multi_column_group()

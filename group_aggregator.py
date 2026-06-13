@@ -155,6 +155,112 @@ class GroupAggregator:
         self._result = result.reset_index()
         return self._result
 
+    def composite_group(
+        self,
+        group_cols: Union[str, List[str]],
+        agg_cols: Union[str, List[str]],
+        agg_funcs: Union[str, List[str]],
+        sep: str = '_',
+        dropna: bool = False,
+        sort: bool = True
+    ) -> pd.DataFrame:
+        if isinstance(group_cols, str):
+            group_cols = [group_cols]
+
+        if len(group_cols) < 2:
+            raise ValueError(
+                f"composite_group requires at least 2 group columns, got {len(group_cols)}. "
+                f"Use aggregate() for single-column grouping."
+            )
+
+        for col in group_cols:
+            if col not in self._df.columns:
+                raise KeyError(f"Group column '{col}' not found in DataFrame")
+
+        self._group_cols = group_cols
+
+        composite_col_name = sep.join(group_cols)
+
+        work_df = self._df.copy()
+        work_df[composite_col_name] = work_df[group_cols].apply(
+            lambda row: sep.join(str(v) if pd.notna(v) else 'NaN' for v in row),
+            axis=1
+        )
+
+        agg_dict = self._build_agg_dict(agg_cols, agg_funcs)
+
+        grouped = work_df.groupby(
+            by=composite_col_name,
+            sort=sort,
+            dropna=dropna
+        )
+
+        result = grouped.agg(agg_dict)
+        result.columns = [f"{col}_{func}" for col, func in result.columns]
+        result = result.reset_index()
+
+        self._result = result
+        return self._result
+
+    def pivot_aggregate(
+        self,
+        row_col: str,
+        col_col: str,
+        agg_col: str,
+        agg_func: str = 'sum',
+        fill_value: Any = None,
+        dropna: bool = False
+    ) -> pd.DataFrame:
+        for name, col in [('row_col', row_col), ('col_col', col_col), ('agg_col', agg_col)]:
+            if col not in self._df.columns:
+                raise KeyError(f"{name} '{col}' not found in DataFrame")
+
+        self._group_cols = [row_col, col_col]
+
+        agg_func = self._validate_agg_func(agg_func)
+
+        pivot_df = self._df.pivot_table(
+            index=row_col,
+            columns=col_col,
+            values=agg_col,
+            aggfunc=agg_func,
+            fill_value=fill_value,
+            dropna=dropna
+        )
+
+        pivot_df.columns = [f"{col_col}_{v}" if pd.notna(v) else f"{col_col}_NaN"
+                            for v in pivot_df.columns]
+        pivot_df = pivot_df.reset_index()
+        pivot_df.columns.name = None
+
+        self._result = pivot_df
+        return self._result
+
+    @property
+    def group_info(self) -> Dict[str, Any]:
+        if self._group_cols is None:
+            return {"status": "no grouping performed yet"}
+
+        info: Dict[str, Any] = {
+            "group_columns": self._group_cols,
+            "num_groups": None,
+            "group_keys": None
+        }
+
+        if self._group_cols and all(col in self._df.columns for col in self._group_cols):
+            grouped = self._df.groupby(by=self._group_cols, dropna=False)
+            info["num_groups"] = grouped.ngroups
+            info["group_keys"] = [
+                list(key) if isinstance(key, tuple) else key
+                for key in grouped.groups.keys()
+            ]
+
+        if self._result is not None:
+            info["result_shape"] = list(self._result.shape)
+            info["result_columns"] = list(self._result.columns)
+
+        return info
+
     def to_csv(self, path: str, **kwargs) -> None:
         if self._result is None:
             raise ValueError("No aggregation result to save. Call aggregate() first.")
